@@ -9,6 +9,7 @@ interface Question {
   text: string;
   type: "MCQ" | "Yes/No";
   options: string[];
+  correctAnswer?: string;
 }
 
 export default function AddQuestion() {
@@ -38,6 +39,7 @@ export default function AddQuestion() {
         text: question.text || question.question || "",
         type: question.type === "Yes/No" ? "Yes/No" : "MCQ",
         options: question.options ?? (question.type === "Yes/No" ? ["Yes", "No"] : []),
+        correctAnswer: question.correctAnswer || "",
       }));
 
       setQuestions((prev) => [...prev, ...mapped]);
@@ -74,6 +76,7 @@ export default function AddQuestion() {
         text: question.text,
         options: question.options,
         type: question.type,
+        correctAnswer: question.correctAnswer || "",
       }));
 
       await api.post("/question/add", {

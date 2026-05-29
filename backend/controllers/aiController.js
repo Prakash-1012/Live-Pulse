@@ -24,21 +24,25 @@ exports.generateQuiz = async (req, res) => {
       model: modelName,
     });
 
-    const prompt = `Generate 5 quiz questions about ${topic}. Return valid JSON as an array of objects with keys: question (string), options (array of strings), and type (string, either "MCQ" or "Yes/No").
+    const prompt = `Generate 5 quiz questions about ${topic}. Return valid JSON as an array of objects with keys: question (string), options (array of strings), type (string, either "MCQ" or "Yes/No"), and correctAnswer (string - must be one of the options provided).
 
 Example format:
 [
   {
     "question": "What is the capital of France?",
     "options": ["Paris", "London", "Berlin", "Madrid"],
-    "type": "MCQ"
+    "type": "MCQ",
+    "correctAnswer": "Paris"
   },
   {
     "question": "Is the Earth round?",
     "options": ["Yes", "No"],
-    "type": "Yes/No"
+    "type": "Yes/No",
+    "correctAnswer": "Yes"
   }
-]`;
+]
+
+IMPORTANT: correctAnswer MUST be exactly one of the options in the options array.`;
 
     console.log("Sending prompt to Gemini API");
     const result = await model.generateContent(prompt);
@@ -70,7 +74,36 @@ Example format:
       });
     }
 
-    res.json({ quiz });
+    // Validate and ensure all questions have correct answers
+    const validatedQuiz = quiz.map((q, index) => {
+      if (!q.question) {
+        throw new Error(`Question ${index + 1} missing 'question' field`);
+      }
+      if (!Array.isArray(q.options) || q.options.length === 0) {
+        throw new Error(`Question ${index + 1} missing or empty 'options' field`);
+      }
+      if (!q.type) {
+        throw new Error(`Question ${index + 1} missing 'type' field`);
+      }
+      if (!q.correctAnswer) {
+        throw new Error(`Question ${index + 1} missing 'correctAnswer' field`);
+      }
+
+      // Verify correctAnswer is one of the options
+      if (!q.options.includes(q.correctAnswer)) {
+        console.warn(`Warning: Question ${index + 1} correctAnswer "${q.correctAnswer}" not in options. Using first option as default.`);
+        q.correctAnswer = q.options[0];
+      }
+
+      return {
+        question: q.question,
+        options: q.options,
+        type: q.type,
+        correctAnswer: q.correctAnswer,
+      };
+    });
+
+    res.json({ quiz: validatedQuiz });
   } catch (error) {
     console.error("AI generation error:", error);
 

@@ -5,6 +5,7 @@ const questionSchema = new mongoose.Schema({
   questionText: String,
   options: [String],
   type: String,
+  correctAnswer: String,
 }, { timestamps: true });
 
 module.exports = mongoose.model("Question",questionSchema);

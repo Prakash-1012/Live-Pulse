@@ -8,6 +8,7 @@ interface GeneratedQuestion {
   text: string;
   type: "MCQ" | "Yes/No";
   options: string[];
+  correctAnswer?: string;
 }
 
 export default function AIGenerator() {
@@ -47,6 +48,7 @@ export default function AIGenerator() {
           text: item.question || item.text || "",
           type: item.type === "Yes/No" ? "Yes/No" : "MCQ",
           options: item.options || ["Yes", "No"],
+          correctAnswer: item.correctAnswer || "",
         }))
       );
     } catch (err: any) {
@@ -150,15 +152,33 @@ export default function AIGenerator() {
                       <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
                         {question.type}
                       </span>
+                      {question.correctAnswer && (
+                        <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
+                          ✓ Answer Set
+                        </span>
+                      )}
                     </div>
                     <p className="font-medium text-gray-900 mb-3">{question.text}</p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 mb-2">
                       {question.options.map((option, i) => (
-                        <span key={i} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm">
+                        <span 
+                          key={i} 
+                          className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                            option === question.correctAnswer 
+                              ? "bg-green-100 text-green-700 border-2 border-green-600" 
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
                           {option}
+                          {option === question.correctAnswer && " ✓"}
                         </span>
                       ))}
                     </div>
+                    {question.correctAnswer && (
+                      <p className="text-xs text-green-600 mt-2">
+                        Correct answer: <span className="font-semibold">{question.correctAnswer}</span>
+                      </p>
+                    )}
                   </motion.div>
                 ))}
               </div>

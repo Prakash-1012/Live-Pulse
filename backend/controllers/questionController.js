@@ -2,7 +2,7 @@ const Question = require("../models/Question");
 
 exports.addQuestion = async (req, res) => {
   try {
-    const { sessionCode, questionText, options, type, questions } = req.body;
+    const { sessionCode, questionText, options, type, correctAnswer, questions } = req.body;
 
     if (!sessionCode) {
       return res.status(400).json({ message: "Session code is required" });
@@ -14,6 +14,7 @@ exports.addQuestion = async (req, res) => {
         questionText: question.text,
         options: question.options || [],
         type: question.type || "MCQ",
+        correctAnswer: question.correctAnswer || question.answer,
       }));
 
       const created = await Question.insertMany(payload);
@@ -29,6 +30,7 @@ exports.addQuestion = async (req, res) => {
       questionText,
       options: Array.isArray(options) ? options : [],
       type,
+      correctAnswer,
     });
 
     res.json(question);

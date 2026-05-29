@@ -17,6 +17,10 @@ const server = http.createServer(app);
 app.use(cors());
 app.use(express.json());
 
+// app.get("/", (req, res) => {
+//   res.json({ message: "LivePulse API running" });
+// });
+
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/session", require("./routes/sessionRoutes"));
 app.use("/api/question", require("./routes/questionRoutes"));
