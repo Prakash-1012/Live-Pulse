@@ -20,8 +20,25 @@ export default function AddQuestion() {
   const [questionText, setQuestionText] = useState("");
   const [questionType, setQuestionType] = useState<"MCQ" | "Yes/No">("MCQ");
   const [options, setOptions] = useState(["", "", "", ""]);
+  const [correctAnswer, setCorrectAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const availableOptions =
+    questionType === "MCQ"
+      ? options.filter((option) => option.trim() !== "")
+      : ["Yes", "No"];
+
+  useEffect(() => {
+    if (questionType === "Yes/No") {
+      setCorrectAnswer("Yes");
+      return;
+    }
+
+    if (correctAnswer && !availableOptions.includes(correctAnswer)) {
+      setCorrectAnswer("");
+    }
+  }, [questionType, options]);
 
   useEffect(() => {
     // Check if user is logged in
@@ -54,11 +71,13 @@ export default function AddQuestion() {
       text: questionText.trim(),
       type: questionType,
       options: questionType === "MCQ" ? options.filter(Boolean) : ["Yes", "No"],
+      correctAnswer: correctAnswer || (questionType === "Yes/No" ? "Yes" : ""),
     };
 
     setQuestions([...questions, newQuestion]);
     setQuestionText("");
     setOptions(["", "", "", ""]);
+    setCorrectAnswer("");
   };
 
   const removeQuestion = (id: string) => {
@@ -183,20 +202,45 @@ export default function AddQuestion() {
                   </div>
                 )}
 
-                {error && <p className="text-sm text-red-600">{error}</p>}
-
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={addQuestion}
-                  className="w-full flex items-center justify-center gap-2 py-4 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Question
-                </motion.button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Correct Answer
+                  </label>
+                  <select
+                    value={correctAnswer}
+                    onChange={(e) => setCorrectAnswer(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      disabled={availableOptions.length === 0}
+                    >
+                      <option value="">
+                        {availableOptions.length === 0
+                          ? "Enter options first"
+                          : "-- Select Correct Answer --"}
+                      </option>
+                      {availableOptions.map((option, index) => (
+                        <option key={index} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    {questionType === "MCQ" && availableOptions.length === 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Add at least one option to choose the correct answer.
+                      </p>
+                    )}
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={addQuestion}
+                    className="w-full flex items-center justify-center gap-2 py-4 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Question
+                  </motion.button>
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
             <h2 className="text-3xl font-bold text-gray-900 mb-6">Questions ({questions.length})</h2>
@@ -221,6 +265,11 @@ export default function AddQuestion() {
                           <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
                             {question.type}
                           </span>
+                          {question.correctAnswer && (
+                            <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
+                              ✓ Answer Set
+                            </span>
+                          )}
                         </div>
                         <p className="font-medium text-gray-900">{question.text}</p>
                       </div>
@@ -231,13 +280,26 @@ export default function AddQuestion() {
                         <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 mb-2">
                       {question.options.map((option, i) => (
-                        <span key={i} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm">
+                        <span 
+                          key={i} 
+                          className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                            option === question.correctAnswer 
+                              ? "bg-green-100 text-green-700 border-2 border-green-600" 
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
                           {option}
+                          {option === question.correctAnswer && " ✓"}
                         </span>
                       ))}
                     </div>
+                    {question.correctAnswer && (
+                      <p className="text-xs text-green-600">
+                        Correct answer: <span className="font-semibold">{question.correctAnswer}</span>
+                      </p>
+                    )}
                   </motion.div>
                 ))}
 
