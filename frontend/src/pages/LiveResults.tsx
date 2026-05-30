@@ -17,33 +17,105 @@ interface ResultItem {
   count: number;
 }
 
+interface SessionData {
+  currentQuestion: number;
+  isActive: boolean;
+}
+
+interface StoredAnswer {
+  questionId: string;
+  questionText: string;
+  answer: string;
+  isCorrect: boolean;
+}
+
+interface FinalQuestionResult {
+  questionId: string;
+  questionText: string;
+  totalCount: number;
+  correctCount: number;
+  accuracy: number;
+}
+
+interface FinalSummary {
+  totalResponses: number;
+  correctResponses: number;
+  overallAccuracy: number;
+  questionResults: FinalQuestionResult[];
+}
+
 export default function LiveResults() {
   const { sessionId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [question, setQuestion] = useState<QuestionItem | null>(null);
   const [results, setResults] = useState<ResultItem[]>([]);
+  const [session, setSession] = useState<SessionData | null>(null);
+  const [finalSummary, setFinalSummary] = useState<FinalSummary | null>(null);
+  const [localAnswers, setLocalAnswers] = useState<StoredAnswer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const questionIdFromUrl = new URLSearchParams(location.search).get("questionId");
 
+  const loadLocalAnswers = () => {
+    if (!sessionId) return;
+    const key = `livepulse_answers_${sessionId}`;
+    const answers = JSON.parse(localStorage.getItem(key) || "[]") as StoredAnswer[];
+    setLocalAnswers(answers);
+  };
+
+  const loadFinalResults = async () => {
+    if (!sessionId) return;
+
+    try {
+      const response = await api.get(`/response/session-results/${sessionId}`);
+      const summary = response.data;
+
+      setFinalSummary({
+        totalResponses: summary.totalResponses,
+        correctResponses: summary.correctResponses,
+        overallAccuracy: Number(String(summary.accuracy).replace("%", "")) || 0,
+        questionResults: (summary.questionResults || []).map((item: any) => ({
+          questionId: item.questionId,
+          questionText: item.questionText,
+          totalCount: item.totalCount,
+          correctCount: item.correctCount,
+          accuracy: Number(String(item.accuracy).replace("%", "")) || 0,
+        })),
+      });
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Unable to load final results.");
+    }
+  };
+
   const loadResults = async (questionId?: string) => {
     if (!sessionId) return;
     setLoading(true);
     setError("");
+    setFinalSummary(null);
 
     try {
       const sessionRes = await api.get(`/session/${sessionId}`);
       const questionRes = await api.get(`/question/${sessionId}`);
       const questions: QuestionItem[] = questionRes.data;
-      const activeQuestion = questions.find((item) => item._id === questionId) || questions[sessionRes.data.currentQuestion] || questions[0];
-      setQuestion(activeQuestion ?? null);
+      setQuestions(questions);
+      setSession(sessionRes.data);
 
-      if (activeQuestion) {
-        const resultsResponse = await api.get(`/response/results/${activeQuestion._id}`);
-        setResults(resultsResponse.data);
+      if (!sessionRes.data.isActive) {
+        setQuestion(null);
+        setResults([]);
+        await loadFinalResults();
+        return;
       }
+
+      const activeQuestion =
+        questions.find((item) => item._id === questionId) ||
+        questions[sessionRes.data.currentQuestion] ||
+        questions[0];
+      setQuestion(activeQuestion ?? null);
+      setResults([]);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Unable to load results.");
     } finally {
@@ -52,6 +124,7 @@ export default function LiveResults() {
   };
 
   useEffect(() => {
+    loadLocalAnswers();
     loadResults(questionIdFromUrl || undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, questionIdFromUrl]);
@@ -62,35 +135,34 @@ export default function LiveResults() {
     socket.connect();
     socket.emit("join-session", sessionId);
 
-    const handleVote = (payload: any) => {
-      if (!question || payload.questionId !== question._id) return;
-      setResults((current) => {
-        const existing = current.find((item) => item._id === payload.answer);
-        if (existing) {
-          return current.map((item) => (item._id === payload.answer ? { ...item, count: item.count + 1 } : item));
-        }
-        return [...current, { _id: payload.answer, count: 1 }];
-      });
+    const handleQuestionChanged = () => {
+      if (session?.isActive !== false) {
+        navigate(`/vote/${sessionId}`);
+      } else {
+        loadResults(undefined);
+      }
     };
 
-    const handleQuestionChanged = () => loadResults(undefined);
-    const handleSessionEnded = () => navigate("/session-end");
+    const handleSessionEnded = () => loadResults(undefined);
 
-    socket.on("new-vote", handleVote);
     socket.on("question-changed", handleQuestionChanged);
     socket.on("session-ended", handleSessionEnded);
 
     return () => {
-      socket.off("new-vote", handleVote);
       socket.off("question-changed", handleQuestionChanged);
       socket.off("session-ended", handleSessionEnded);
       if (socket.connected) {
         socket.disconnect();
       }
     };
-  }, [sessionId, navigate, question]);
+  }, [sessionId, navigate, session]);
 
-  const chartData = results.map((item) => ({ name: item._id, votes: item.count }));
+  const answeredCorrectly = localAnswers.filter((answer) => answer.isCorrect).length;
+  const answeredTotal = localAnswers.length;
+  const chartData = finalSummary
+    ? [{ name: "Correct Answers", count: answeredCorrectly }]
+    : [];
+  const isLastQuestion = Boolean(session && questions.length > 0 && session.currentQuestion >= questions.length - 1);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex flex-col">
@@ -122,50 +194,75 @@ export default function LiveResults() {
               </div>
             ) : error ? (
               <p className="text-sm text-red-600">{error}</p>
-            ) : question ? (
+            ) : session?.isActive ? (
               <>
-                <p className="text-xl text-gray-700 mb-8 text-center">{question.questionText}</p>
+                <p className="text-xl text-gray-700 mb-8 text-center">
+                  {question?.questionText ?? "Waiting for the host to continue the session..."}
+                </p>
 
-                <div className="h-80 mb-8">
+                <div className="h-80 mb-8 rounded-3xl border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
+                  <p className="text-lg text-gray-500 text-center px-6">
+                    {isLastQuestion
+                      ? "Waiting for final results from the host..."
+                      : "Waiting for the next question from the host..."}
+                  </p>
+                </div>
+
+                <div className="mt-8 p-6 bg-purple-50 rounded-2xl text-center">
+                  <p className="text-purple-700 font-semibold">
+                    {isLastQuestion ? "Waiting for final results..." : "Waiting for next question..."}
+                  </p>
+                </div>
+              </>
+            ) : finalSummary ? (
+              <>
+                <p className="text-xl text-gray-700 mb-4 text-center">Session complete — final results</p>
+                <div className="grid gap-4 sm:grid-cols-2 mb-8">
+                  <div className="p-6 rounded-3xl bg-purple-50">
+                    <p className="text-sm text-gray-500">Total submissions</p>
+                    <p className="text-4xl font-bold text-gray-900">{finalSummary.totalResponses}</p>
+                  </div>
+                  <div className="p-6 rounded-3xl bg-purple-50">
+                    <p className="text-sm text-gray-500">Overall accuracy</p>
+                    <p className="text-4xl font-bold text-gray-900">{finalSummary.overallAccuracy}%</p>
+                  </div>
+                </div>
+
+                <div className="h-96 mb-8">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                       <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="votes" fill="#9333ea" radius={[8, 8, 0, 0]} />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip formatter={(value: number) => `${value} correct`} />
+                      <Bar dataKey="count" fill="#9333ea" radius={[8, 8, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
 
-                <div className="space-y-3">
-                  {chartData.map((result, index) => (
-                    <motion.div
-                      key={result.name}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-center gap-4"
-                    >
-                      <div className="flex-1 bg-gray-100 rounded-xl overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min((result.votes / Math.max(...chartData.map((item) => item.votes, 1))) * 100, 100)}%` }}
-                          transition={{ duration: 0.8, delay: index * 0.1 }}
-                          className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-3"
-                        >
-                          <span className="font-semibold text-white">{result.name}</span>
-                        </motion.div>
-                      </div>
-                      <div className="flex items-baseline gap-2 min-w-[100px] justify-end">
-                        <span className="text-2xl font-bold text-gray-900">{result.votes}</span>
-                      </div>
-                    </motion.div>
-                  ))}
+                <div className="grid gap-4 sm:grid-cols-2 mb-8">
+                  <div className="p-6 rounded-3xl bg-purple-50">
+                    <p className="text-sm text-gray-500">Your correct answers</p>
+                    <p className="text-4xl font-bold text-gray-900">{answeredCorrectly}</p>
+                  </div>
+                  <div className="p-6 rounded-3xl bg-purple-50">
+                    <p className="text-sm text-gray-500">Questions answered</p>
+                    <p className="text-4xl font-bold text-gray-900">{answeredTotal}</p>
+                  </div>
                 </div>
 
-                <div className="mt-8 p-6 bg-purple-50 rounded-2xl text-center">
-                  <p className="text-purple-700 font-semibold">Waiting for next question...</p>
+                <div className="space-y-4">
+                  {finalSummary.questionResults.map((result) => (
+                    <div key={result.questionId} className="p-4 rounded-3xl bg-white shadow-sm border border-gray-100">
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="font-semibold text-gray-900">{result.questionText}</p>
+                        <span className="text-sm text-gray-500">{result.accuracy}% correct</span>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-2">
+                        {result.correctCount} / {result.totalCount} correct answers
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </>
             ) : (

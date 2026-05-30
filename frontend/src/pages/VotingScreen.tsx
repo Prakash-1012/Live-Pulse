@@ -17,6 +17,13 @@ interface SessionData {
   isActive: boolean;
 }
 
+interface StoredAnswer {
+  questionId: string;
+  questionText: string;
+  answer: string;
+  isCorrect: boolean;
+}
+
 export default function VotingScreen() {
   const navigate = useNavigate();
   const { sessionId } = useParams();
@@ -25,6 +32,15 @@ export default function VotingScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [session, setSession] = useState<SessionData | null>(null);
+
+  const saveAnswerLocally = (storedAnswer: StoredAnswer) => {
+    if (!sessionId) return;
+    const key = `livepulse_answers_${sessionId}`;
+    const existing = JSON.parse(localStorage.getItem(key) || "[]") as StoredAnswer[];
+    const updated = existing.filter((item) => item.questionId !== storedAnswer.questionId);
+    updated.push(storedAnswer);
+    localStorage.setItem(key, JSON.stringify(updated));
+  };
 
   useEffect(() => {
     if (!sessionId) return;
@@ -74,7 +90,7 @@ export default function VotingScreen() {
     };
 
     const handleSessionEnded = () => {
-      navigate("/session-end");
+      navigate(`/results/${sessionId}`);
     };
 
     socket.on("question-changed", handleQuestionChanged);
@@ -95,10 +111,17 @@ export default function VotingScreen() {
 
     try {
       const answer = question.options[selectedOption];
-      await api.post("/response/submit", {
+      const response = await api.post("/response/submit", {
         sessionCode: sessionId,
         questionId: question._id,
         answer,
+      });
+
+      saveAnswerLocally({
+        questionId: question._id,
+        questionText: question.questionText,
+        answer,
+        isCorrect: Boolean(response.data?.isCorrect),
       });
 
       if (!socket.connected) {

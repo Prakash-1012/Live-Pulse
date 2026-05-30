@@ -2,15 +2,17 @@ import { motion } from "motion/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Activity, SkipForward, StopCircle, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import api from "../lib/api";
 import socket from "../socket";
 
 interface QuestionItem {
   _id: string;
+  sessionCode: string;
   questionText: string;
   options: string[];
   type: string;
+  correctAnswer?: string;
 }
 
 interface SessionData {
@@ -23,7 +25,8 @@ export default function HostLiveControl() {
   const { sessionId } = useParams();
   const [session, setSession] = useState<SessionData | null>(null);
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
-  const [results, setResults] = useState<{ name: string; votes: number }[]>([]);
+  const [results, setResults] = useState<{ name: string; votes: number; isCorrect?: boolean }[]>([]);
+  const [correctAnswer, setCorrectAnswer] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updating, setUpdating] = useState(false);
@@ -54,9 +57,20 @@ export default function HostLiveControl() {
 
     try {
       const response = await api.get(`/response/results/${questionId}`);
-      setResults(response.data.map((item: any) => ({ name: item._id, votes: item.count })));
+      const resultItems = response.data?.results ?? [];
+      setCorrectAnswer(response.data?.correctAnswer || "");
+      setResults(
+        resultItems
+          .map((item: any) => ({
+            name: item._id,
+            votes: item.count,
+            isCorrect: item._id === response.data?.correctAnswer,
+          }))
+          .sort((a: any, b: any) => b.votes - a.votes)
+      );
     } catch (err) {
       setResults([]);
+      setCorrectAnswer("");
     }
   };
 
@@ -195,14 +209,32 @@ export default function HostLiveControl() {
 
                   <h2 className="text-3xl font-bold text-gray-900 mb-8">{currentQuestion.questionText}</h2>
 
-                  <div className="h-80">
+                  <div className="space-y-4 mb-6">
+                    <div className="rounded-3xl bg-purple-50 p-5 border border-purple-100">
+                      <p className="text-sm text-gray-500">Correct answer</p>
+                      <p className="mt-2 text-xl font-semibold text-gray-900">{correctAnswer || "Not available yet"}</p>
+                    </div>
+                    <div className="rounded-3xl bg-blue-50 p-5 border border-blue-100">
+                      <p className="text-sm text-gray-500">Total responses</p>
+                      <p className="mt-2 text-xl font-semibold text-gray-900">{totalVotes}</p>
+                    </div>
+                  </div>
+
+                  <div className="h-96">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={results.length ? results : [{ name: "No votes yet", votes: 0 }] }>
+                      <BarChart layout="vertical" data={results.length ? results : [{ name: "No votes yet", votes: 0 }] }>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="votes" fill="#9333ea" radius={[8, 8, 0, 0]} />
+                        <XAxis type="number" />
+                        <YAxis type="category" dataKey="name" width={180} />
+                        <Tooltip formatter={(value) => `${value} votes`} />
+                        <Bar dataKey="votes" radius={[8, 8, 0, 0]}>
+                          {results.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={entry.isCorrect ? "#16a34a" : "#9333ea"}
+                            />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
