@@ -224,7 +224,12 @@ export default function HostLiveControl() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart layout="vertical" data={results.length ? results : [{ name: "No votes yet", votes: 0 }] }>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis type="number" />
+                        <XAxis
+                          type="number"
+                          domain={[0, Math.max(totalVotes, 1)]}
+                          tickCount={Math.min(Math.max(totalVotes + 1, 2), 6)}
+                          tickFormatter={(value) => Number(value).toFixed(0)}
+                        />
                         <YAxis type="category" dataKey="name" width={180} />
                         <Tooltip formatter={(value) => `${value} votes`} />
                         <Bar dataKey="votes" radius={[8, 8, 0, 0]}>
