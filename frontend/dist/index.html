@@ -4,13 +4,46 @@
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Design UI for LivePulse</title>
-      <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
-      <script type="module" crossorigin src="/assets/index-CGzAlaaQ.js"></script>
-      <link rel="stylesheet" crossorigin href="/assets/index-DHXQLn3R.css">
+      <title>LivePulse</title>
+      <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+      <style>
+        html, body { height: 100%; margin: 0; }
+        #root { height: 100%; }
+        .livepulse-logo {
+          position: fixed;
+          top: 16px;
+          left: 16px;
+          z-index: 999;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          background: rgba(255,255,255,0.88);
+          border-radius: 999px;
+          padding: 0.5rem 0.85rem;
+          box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+          backdrop-filter: blur(10px);
+        }
+        .livepulse-logo img {
+          width: 42px;
+          height: 42px;
+        }
+        .livepulse-logo span {
+          font-family: Inter, system-ui, sans-serif;
+          font-weight: 700;
+          font-size: 1rem;
+          color: #312e81;
+          letter-spacing: 0.01em;
+        }
+      </style>
+      <script type="module" crossorigin src="/assets/index-B0PYvead.js"></script>
+      <link rel="stylesheet" crossorigin href="/assets/index-D4IqAc9a.css">
     </head>
 
     <body>
+      <div class="livepulse-logo">
+        <img src="/logo.svg" alt="LivePulse logo" />
+        <span>LivePulse</span>
+      </div>
       <div id="root"></div>
     </body>
   </html>

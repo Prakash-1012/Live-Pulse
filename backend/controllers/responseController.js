@@ -143,3 +143,64 @@ exports.getSessionResults = async (req, res) => {
     res.status(500).json({ message: "Failed to load session results" });
   }
 };
+
+exports.getSessionLeaderboard = async (req, res) => {
+  try {
+    const { sessionCode } = req.params;
+
+    // Get all responses for this session
+    const responses = await Response.find({ sessionCode });
+
+    if (!responses.length) {
+      return res.json({
+        leaderboard: [],
+        totalParticipants: 0,
+      });
+    }
+
+    // Group responses by userId
+    const leaderboardMap = {};
+
+    responses.forEach((response) => {
+      if (!leaderboardMap[response.userId]) {
+        leaderboardMap[response.userId] = {
+          userId: response.userId,
+          userName: response.userName,
+          totalAnswered: 0,
+          correctAnswers: 0,
+        };
+      }
+
+      leaderboardMap[response.userId].totalAnswered += 1;
+      if (response.isCorrect) {
+        leaderboardMap[response.userId].correctAnswers += 1;
+      }
+    });
+
+    // Convert to array and calculate score percentage
+    const leaderboard = Object.values(leaderboardMap)
+      .map((participant) => ({
+        ...participant,
+        scorePercentage: participant.totalAnswered > 0 
+          ? ((participant.correctAnswers / participant.totalAnswered) * 100).toFixed(2)
+          : "0.00",
+      }))
+      .sort((a, b) => {
+        // Sort by score percentage descending, then by correct answers
+        const scoreA = parseFloat(a.scorePercentage);
+        const scoreB = parseFloat(b.scorePercentage);
+        if (scoreB !== scoreA) {
+          return scoreB - scoreA;
+        }
+        return b.correctAnswers - a.correctAnswers;
+      });
+
+    res.json({
+      leaderboard,
+      totalParticipants: leaderboard.length,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to load leaderboard" });
+  }
+};

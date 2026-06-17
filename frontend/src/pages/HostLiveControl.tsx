@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Activity, SkipForward, StopCircle, Users } from "lucide-react";
+import { Activity, SkipForward, StopCircle, Users, Trophy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import api from "../lib/api";
@@ -20,6 +20,14 @@ interface SessionData {
   isActive: boolean;
 }
 
+interface LeaderboardEntry {
+  userId: string;
+  userName: string;
+  totalAnswered: number;
+  correctAnswers: number;
+  scorePercentage: string;
+}
+
 export default function HostLiveControl() {
   const navigate = useNavigate();
   const { sessionId } = useParams();
@@ -30,6 +38,8 @@ export default function HostLiveControl() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [activeTab, setActiveTab] = useState<"leaderboard" | "questions">("leaderboard");
   const currentQuestionRef = useRef<string | null>(null);
 
   const currentQuestion = questions[session?.currentQuestion ?? 0];
@@ -74,6 +84,17 @@ export default function HostLiveControl() {
     }
   };
 
+  const fetchLeaderboard = async () => {
+    if (!sessionId) return;
+
+    try {
+      const response = await api.get(`/response/leaderboard/${sessionId}`);
+      setLeaderboard(response.data?.leaderboard || []);
+    } catch (err) {
+      console.error("Failed to fetch leaderboard:", err);
+    }
+  };
+
   useEffect(() => {
     // Check if user is logged in
     const token = localStorage.getItem("token");
@@ -83,6 +104,7 @@ export default function HostLiveControl() {
     }
 
     fetchSessionData();
+    fetchLeaderboard();
   }, [sessionId]);
 
   useEffect(() => {
@@ -108,10 +130,13 @@ export default function HostLiveControl() {
         }
         return [...prev, { name: payload.answer, votes: 1 }];
       });
+      // Refresh leaderboard when new vote comes in
+      fetchLeaderboard();
     };
 
     const handleQuestionChanged = () => {
       fetchSessionData();
+      fetchLeaderboard();
     };
 
     const handleSessionEnded = () => {
@@ -288,17 +313,87 @@ export default function HostLiveControl() {
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-2">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 sticky top-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">All Questions</h3>
-              <div className="space-y-3">
-                {questions.map((question, index) => (
-                  <div key={question._id} className={`p-4 rounded-xl border-2 transition-colors ${index === session?.currentQuestion ? "border-purple-600 bg-purple-50" : "border-gray-200 bg-white"}`}>
-                    <div className="flex items-start gap-3">
-                      <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold ${index === session?.currentQuestion ? "bg-purple-600 text-white" : "bg-gray-200 text-gray-600"}`}>{index + 1}</span>
-                      <p className="text-sm font-medium text-gray-900">{question.questionText}</p>
-                    </div>
-                  </div>
-                ))}
+              {/* Tab Navigation */}
+              <div className="flex gap-4 mb-6 border-b border-gray-200">
+                <button
+                  onClick={() => setActiveTab("leaderboard")}
+                  className={`flex items-center gap-2 py-3 px-4 font-semibold text-sm border-b-2 transition-colors ${
+                    activeTab === "leaderboard"
+                      ? "border-purple-600 text-purple-600"
+                      : "border-transparent text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <Trophy className="w-4 h-4" />
+                  Leaderboard
+                </button>
+                <button
+                  onClick={() => setActiveTab("questions")}
+                  className={`flex items-center gap-2 py-3 px-4 font-semibold text-sm border-b-2 transition-colors ${
+                    activeTab === "questions"
+                      ? "border-purple-600 text-purple-600"
+                      : "border-transparent text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  All Questions
+                </button>
               </div>
+
+              {/* Leaderboard Tab */}
+              {activeTab === "leaderboard" && (
+                <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                  {leaderboard.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No participants yet</p>
+                    </div>
+                  ) : (
+                    leaderboard.map((entry, index) => (
+                      <div
+                        key={entry.userId}
+                        className="p-4 rounded-xl border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                index === 0 ? "bg-yellow-400 text-white" : 
+                                index === 1 ? "bg-gray-400 text-white" : 
+                                index === 2 ? "bg-orange-400 text-white" : 
+                                "bg-gray-200 text-gray-600"
+                              }`}>
+                                {index + 1}
+                              </span>
+                              <p className="font-semibold text-gray-900">{entry.userName}</p>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="text-gray-600">
+                                <span className="font-bold text-green-600">{entry.correctAnswers}</span>/{entry.totalAnswered} correct
+                              </span>
+                              <span className="text-gray-600">
+                                Score: <span className="font-bold text-purple-600">{entry.scorePercentage}%</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Questions Tab */}
+              {activeTab === "questions" && (
+                <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                  {questions.map((question, index) => (
+                    <div key={question._id} className={`p-4 rounded-xl border-2 transition-colors ${index === session?.currentQuestion ? "border-purple-600 bg-purple-50" : "border-gray-200 bg-white"}`}>
+                      <div className="flex items-start gap-3">
+                        <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold ${index === session?.currentQuestion ? "bg-purple-600 text-white" : "bg-gray-200 text-gray-600"}`}>{index + 1}</span>
+                        <p className="text-sm font-medium text-gray-900">{question.questionText}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         </div>

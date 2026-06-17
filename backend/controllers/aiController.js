@@ -45,10 +45,40 @@ Example format:
 IMPORTANT: correctAnswer MUST be exactly one of the options in the options array.`;
 
     console.log("Sending prompt to Gemini API");
-    const result = await model.generateContent(prompt);
-    const text = await result.response.text();
 
-    console.log("Gemini API response:", text);
+    // Robust request with simple retry/backoff to handle transient 503s
+    let attempt = 0;
+    const maxAttempts = 3;
+    let text = null;
+
+    while (attempt < maxAttempts) {
+      attempt += 1;
+      try {
+        console.log(`Gemini request attempt ${attempt}`);
+        const result = await model.generateContent(prompt);
+
+        // The SDK may return different shapes depending on version; try common paths
+        if (result && result.response && typeof result.response.text === "function") {
+          text = await result.response.text();
+        } else if (result && result.output && Array.isArray(result.output) && result.output[0] && result.output[0].content) {
+          // Newer SDKs sometimes put text under output[0].content[0].text
+          const content = result.output[0].content[0];
+          text = (content && (content.text || content['@type'] && JSON.stringify(content))) || JSON.stringify(result);
+        } else {
+          // Fallback: stringify the whole result
+          text = typeof result === 'string' ? result : JSON.stringify(result);
+        }
+
+        console.log("Gemini API response:", text);
+        break;
+      } catch (e) {
+        console.error(`Gemini attempt ${attempt} failed:`, e && (e.message || e));
+        // If final attempt, rethrow so outer catch can handle it
+        if (attempt >= maxAttempts) throw e;
+        // Simple exponential backoff
+        await new Promise((res) => setTimeout(res, 1000 * Math.pow(2, attempt - 1)));
+      }
+    }
 
     let quiz;
 

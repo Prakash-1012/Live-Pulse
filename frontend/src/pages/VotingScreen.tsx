@@ -4,6 +4,7 @@ import { Activity } from "lucide-react";
 import { useEffect, useState } from "react";
 import api from "../lib/api";
 import socket from "../socket";
+import { getSessionJoinerId, getJoinerDisplayName } from "../lib/sessionJoinerId";
 
 interface QuestionItem {
   _id: string;
@@ -111,10 +112,15 @@ export default function VotingScreen() {
 
     try {
       const answer = question.options[selectedOption];
+      const joinerId = getSessionJoinerId(sessionId);
+      const joinerName = getJoinerDisplayName(sessionId);
+
       const response = await api.post("/response/submit", {
         sessionCode: sessionId,
         questionId: question._id,
         answer,
+        userId: joinerId,
+        userName: joinerName,
       });
 
       saveAnswerLocally({
