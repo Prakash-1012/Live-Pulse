@@ -4,6 +4,7 @@ import { Activity } from "lucide-react";
 import { useEffect, useState } from "react";
 import api from "../lib/api";
 import socket from "../socket";
+import BackButton from "../components/BackButton";
 import { getSessionJoinerId, getJoinerDisplayName } from "../lib/sessionJoinerId";
 
 interface QuestionItem {
