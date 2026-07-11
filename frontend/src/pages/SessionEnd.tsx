@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { Activity, CheckCircle } from "lucide-react";
+import BackButton from "../components/BackButton";
 
 export default function SessionEnd() {
   const navigate = useNavigate();
@@ -12,6 +13,9 @@ export default function SessionEnd() {
         animate={{ opacity: 1, scale: 1 }}
         className="text-center"
       >
+        <div className="absolute left-6 top-6">
+          <BackButton fallback="/" className="text-white/80 hover:text-white" />
+        </div>
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}

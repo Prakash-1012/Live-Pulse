@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import api from "../lib/api";
 import socket from "../socket";
+import BackButton from "../components/BackButton";
 
 interface QuestionItem {
   _id: string;
@@ -194,6 +195,7 @@ export default function HostLiveControl() {
       <nav className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <BackButton fallback="/dashboard" />
             <Activity className="w-8 h-8 text-purple-600" strokeWidth={2.5} />
             <h1 className="text-2xl font-bold text-gray-900">LivePulse</h1>
             <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">LIVE</span>

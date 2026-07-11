@@ -2,6 +2,9 @@ import { createBrowserRouter } from "react-router-dom";
 import Landing from "./Landing";
 import Login from "./Login";
 import Signup from "./Signup";
+import ParticipantHome from "./ParticipantHome";
+import ParticipantLogin from "./ParticipantLogin";
+import ParticipantSignup from "./ParticipantSignup";
 import HostDashboard from "./HostDashboard";
 import CreateSession from "./CreateSession";
 import AddQuestion from "./AddQuestion";
@@ -24,6 +27,18 @@ export const router = createBrowserRouter([
   {
     path: "/signup",
     Component: Signup,
+  },
+  {
+    path: "/participant",
+    Component: ParticipantHome,
+  },
+  {
+    path: "/participant/login",
+    Component: ParticipantLogin,
+  },
+  {
+    path: "/participant/signup",
+    Component: ParticipantSignup,
   },
   {
     path: "/dashboard",

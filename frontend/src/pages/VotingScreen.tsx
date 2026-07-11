@@ -113,7 +113,19 @@ export default function VotingScreen() {
     try {
       const answer = question.options[selectedOption];
       const joinerId = getSessionJoinerId(sessionId);
-      const joinerName = getJoinerDisplayName(sessionId);
+
+      const storedUser = localStorage.getItem("user");
+      let joinerName = getJoinerDisplayName(sessionId);
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          if (parsed?.name) {
+            joinerName = parsed.name;
+          }
+        } catch {
+          // ignore parse errors and use stored joiner name
+        }
+      }
 
       const response = await api.post("/response/submit", {
         sessionCode: sessionId,
@@ -154,6 +166,7 @@ export default function VotingScreen() {
       <nav className="bg-white/10 backdrop-blur-sm border-b border-white/20 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <BackButton fallback="/join" />
             <Activity className="w-8 h-8 text-white" strokeWidth={2.5} />
             <h1 className="text-2xl font-bold text-white">LivePulse</h1>
           </div>

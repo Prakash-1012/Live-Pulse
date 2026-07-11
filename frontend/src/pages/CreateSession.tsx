@@ -1,8 +1,9 @@
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { Activity, ArrowLeft, Play } from "lucide-react";
+import { Activity, Play } from "lucide-react";
 import { useState, useEffect } from "react";
 import api from "../lib/api";
+import BackButton from "../components/BackButton";
 
 export default function CreateSession() {
   const navigate = useNavigate();
@@ -48,12 +49,7 @@ export default function CreateSession() {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center gap-3">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
+          <BackButton fallback="/dashboard" />
           <Activity className="w-8 h-8 text-purple-600" strokeWidth={2.5} />
           <h1 className="text-2xl font-bold text-gray-900">LivePulse</h1>
         </div>

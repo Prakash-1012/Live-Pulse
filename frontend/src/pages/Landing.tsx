@@ -32,7 +32,7 @@ export default function Landing() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate("/join")}
+            onClick={() => navigate("/participant")}
             className="px-12 py-5 bg-white text-purple-600 rounded-2xl font-semibold text-lg shadow-xl hover:shadow-2xl transition-shadow"
           >
             Join Session

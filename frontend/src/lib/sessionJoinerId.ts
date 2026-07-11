@@ -17,7 +17,16 @@ export const getSessionJoinerId = (sessionCode: string): string => {
   return joinerId;
 };
 
+export const getStoredJoinerName = (sessionCode: string): string | null => {
+  return localStorage.getItem(`livepulse_joiner_name_${sessionCode}`);
+};
+
 export const getJoinerDisplayName = (sessionCode: string): string => {
+  const storedName = getStoredJoinerName(sessionCode);
+  if (storedName) {
+    return storedName;
+  }
+
   const joinerId = getSessionJoinerId(sessionCode);
   // Extract a short readable identifier
   const parts = joinerId.split('_');

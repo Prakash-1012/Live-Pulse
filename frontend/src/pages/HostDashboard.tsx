@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Activity, Plus, LogOut, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import api from "../lib/api";
+import BackButton from "../components/BackButton";
 
 interface SessionItem {
   _id: string;
@@ -48,6 +49,7 @@ export default function HostDashboard() {
       <nav className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <BackButton fallback="/" />
             <Activity className="w-8 h-8 text-purple-600" strokeWidth={2.5} />
             <h1 className="text-2xl font-bold text-gray-900">LivePulse</h1>
           </div>

@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Activity, TrendingUp } from "lucide-react";
+import BackButton from "../components/BackButton";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import api from "../lib/api";
 import socket from "../socket";
@@ -169,6 +170,7 @@ export default function LiveResults() {
       <nav className="bg-white/10 backdrop-blur-sm border-b border-white/20 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <BackButton fallback={`/vote/${sessionId ?? ""}`} />
             <Activity className="w-8 h-8 text-white" strokeWidth={2.5} />
             <h1 className="text-2xl font-bold text-white">LivePulse</h1>
           </div>

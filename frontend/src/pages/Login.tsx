@@ -1,8 +1,11 @@
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { Activity, ArrowLeft } from "lucide-react";
+import { Activity } from "lucide-react";
 import { useState } from "react";
+import { GoogleLogin } from '@react-oauth/google';
 import api from "../lib/api";
+import { isValidEmail } from "../lib/emailValidator";
+import BackButton from "../components/BackButton";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -14,6 +17,13 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Validate email format
+    if (!isValidEmail(email)) {
+      setError("Enter a valid Email");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -28,6 +38,27 @@ export default function Login() {
     }
   };
 
+  const handleGoogleLogin = async (credentialResponse: any) => {
+    try {
+      setError("");
+      setLoading(true);
+
+      // Send the credential token to your backend
+      const response = await api.post("/auth/google-login", {
+        token: credentialResponse.credential,
+      });
+
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      navigate("/dashboard");
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Google login failed. Please try again.");
+      console.error("Google login error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center p-6">
       <motion.div
@@ -35,13 +66,7 @@ export default function Login() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back
-        </button>
+        <BackButton fallback="/" className="text-white/80 hover:text-white mb-8" />
 
         <div className="bg-white rounded-3xl p-8 shadow-2xl">
           <div className="flex items-center gap-3 mb-2">
@@ -60,7 +85,11 @@ export default function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors ${
+                  error.includes("valid Email") && email
+                    ? "border-red-500"
+                    : "border-gray-300"
+                }`}
                 placeholder="your@email.com"
                 required
               />
@@ -92,6 +121,25 @@ export default function Login() {
               {loading ? "Logging in..." : "Login"}
             </motion.button>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or continue with</span>
+            </div>
+          </div>
+
+          <div className="w-full flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleLogin}
+              onError={() => setError("Google login failed")}
+              theme="outline"
+              size="large"
+              width="100%"
+            />
+          </div>
 
           <p className="text-center text-gray-600 mt-6">
             Don't have an account?{" "}
