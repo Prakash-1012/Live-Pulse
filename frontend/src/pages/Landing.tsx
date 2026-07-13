@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { Activity } from "lucide-react";
+import { Brain } from "lucide-react";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -19,13 +19,13 @@ export default function Landing() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="flex items-center justify-center gap-3 mb-6"
         >
-          <Activity className="w-16 h-16 text-white" strokeWidth={2.5} />
+          <Brain className="w-16 h-16 text-white" />
         </motion.div>
 
         <h1 className="text-7xl font-bold text-white mb-4">BrainBuzz</h1>
 
         <p className="text-2xl text-white/90 mb-16 max-w-lg mx-auto">
-          Feel the pulse of your audience
+          Your anytime Quiz platform
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
