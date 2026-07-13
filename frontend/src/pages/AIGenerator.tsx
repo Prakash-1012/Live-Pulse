@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Activity, Sparkles, Plus } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, DragEvent } from "react";
 import api from "../lib/api";
 import BackButton from "../components/BackButton";
 
@@ -17,8 +17,11 @@ export default function AIGenerator() {
   const location = useLocation();
   const { sessionId } = useParams();
   const [topic, setTopic] = useState("");
+  const [pptFile, setPptFile] = useState<File | null>(null);
+  const [pptPrompt, setPptPrompt] = useState("");
   const [generated, setGenerated] = useState<GeneratedQuestion[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -59,6 +62,60 @@ export default function AIGenerator() {
     }
   };
 
+  const uploadPptQuiz = async () => {
+    if (!pptFile) return;
+    setError("");
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("ppt", pptFile);
+      // include optional user prompt (user should specify desired count inside the prompt)
+      if (pptPrompt && pptPrompt.trim()) formData.append("prompt", pptPrompt.trim());
+
+      const response = await api.post("/ai/upload-quiz", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const quiz = response.data.quiz;
+      const parsed = typeof quiz === "string" ? JSON.parse(quiz) : quiz;
+
+      if (!Array.isArray(parsed)) {
+        throw new Error("Unexpected quiz format");
+      }
+
+      setGenerated(
+        parsed.map((item: any) => ({
+          text: item.question || item.text || "",
+          type: item.type === "Yes/No" ? "Yes/No" : "MCQ",
+          options: item.options || ["Yes", "No"],
+          correctAnswer: item.correctAnswer || "",
+        }))
+      );
+    } catch (err: any) {
+      setError(err?.message || "Unable to generate quiz from PPT. Try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleFileDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      setPptFile(files[0]);
+    }
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   const addToSession = () => {
     navigate(`/add-question/${sessionId}`, {
       state: { generatedQuestions: generated },
@@ -96,7 +153,7 @@ export default function AIGenerator() {
 
           <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200 mb-8">
             <label className="block text-sm font-medium text-gray-700 mb-3">Topic</label>
-            <div className="flex gap-3">
+            <div className="flex gap-3 mb-4 flex-col sm:flex-row">
               <input
                 type="text"
                 value={topic}
@@ -115,6 +172,55 @@ export default function AIGenerator() {
                 {isGenerating ? "Generating..." : "Generate"}
               </motion.button>
             </div>
+
+            <label className="block text-sm font-medium text-gray-700 mb-3">Optional prompt for PPT</label>
+            <div className="mb-4">
+              <textarea
+                value={pptPrompt}
+                onChange={(e) => setPptPrompt(e.target.value)}
+                placeholder="Optional: give the AI a specific focus or instructions for the quiz (e.g., focus on definitions, include difficulty tags)."
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                rows={3}
+              />
+              <p className="text-sm text-gray-500 mt-2">Specify the desired number of questions in the prompt above (e.g., "Generate 12 questions focusing on definitions").</p>
+            </div>
+
+            <label className="block text-sm font-medium text-gray-700 mb-3">Upload PowerPoint</label>
+            <div className="flex flex-col gap-3 sm:flex-row items-start">
+              <label
+                htmlFor="ppt-file-input"
+                className={`flex-1 block rounded-xl border-2 border-dashed ${dragActive ? "border-indigo-600 bg-indigo-50" : "border-gray-300 bg-white"} cursor-pointer transition-colors`}
+                onDragOver={handleDragOver}
+                onDragEnter={() => setDragActive(true)}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={handleFileDrop}
+              >
+                <div className="w-full h-full inline-flex items-center justify-center px-8 py-4 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors">
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  {pptFile ? pptFile.name : "Choose File or Drag Here"}
+                </div>
+                <input
+                  id="ppt-file-input"
+                  type="file"
+                  accept=".ppt,.pptx"
+                  onChange={(e) => setPptFile(e.target.files ? e.target.files[0] : null)}
+                  className="hidden"
+                />
+              </label>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={uploadPptQuiz}
+                disabled={!pptFile || uploading}
+                className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Sparkles className="w-5 h-5" />
+                {uploading ? "Uploading..." : "Upload PPT"}
+              </motion.button>
+            </div>
+            {pptFile && <p className="text-sm text-gray-700 mt-2">Selected file: {pptFile.name}</p>}
+            <p className="text-xs text-gray-500 mt-2">Upload a PowerPoint file to create a quiz from your slides.</p>
           </div>
 
           {error && <p className="text-sm text-red-600 mb-6">{error}</p>}
