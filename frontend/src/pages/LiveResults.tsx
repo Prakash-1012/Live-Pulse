@@ -62,7 +62,7 @@ export default function LiveResults() {
 
   const loadLocalAnswers = () => {
     if (!sessionId) return;
-    const key = `livepulse_answers_${sessionId}`;
+    const key = `brainbuzz_answers_${sessionId}`;
     const answers = JSON.parse(localStorage.getItem(key) || "[]") as StoredAnswer[];
     setLocalAnswers(answers);
   };
@@ -172,7 +172,7 @@ export default function LiveResults() {
           <div className="flex items-center gap-3">
             <BackButton fallback={`/vote/${sessionId ?? ""}`} />
             <Activity className="w-8 h-8 text-white" strokeWidth={2.5} />
-            <h1 className="text-2xl font-bold text-white">LivePulse</h1>
+            <h1 className="text-2xl font-bold text-white">BrainBuzz</h1>
           </div>
 
           <div className="flex items-center gap-3">

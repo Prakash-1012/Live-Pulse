@@ -22,7 +22,7 @@ export default function Landing() {
           <Activity className="w-16 h-16 text-white" strokeWidth={2.5} />
         </motion.div>
 
-        <h1 className="text-7xl font-bold text-white mb-4">LivePulse</h1>
+        <h1 className="text-7xl font-bold text-white mb-4">BrainBuzz</h1>
 
         <p className="text-2xl text-white/90 mb-16 max-w-lg mx-auto">
           Feel the pulse of your audience

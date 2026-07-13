@@ -42,7 +42,7 @@ export default function JoinSession() {
     try {
       await api.get(`/session/${code}`);
       if (name.trim()) {
-        localStorage.setItem(`livepulse_joiner_name_${code}`, name.trim());
+        localStorage.setItem(`brainbuzz_joiner_name_${code}`, name.trim());
       }
       navigate(`/vote/${code}`);
     } catch (err: any) {
@@ -64,7 +64,7 @@ export default function JoinSession() {
         <div className="bg-white rounded-3xl p-10 shadow-2xl">
           <div className="flex items-center gap-3 mb-2">
             <Activity className="w-8 h-8 text-purple-600" strokeWidth={2.5} />
-            <h1 className="text-3xl font-bold text-gray-900">LivePulse</h1>
+            <h1 className="text-3xl font-bold text-gray-900">BrainBuzz</h1>
           </div>
 
           <p className="text-gray-600 mb-8">Join a live session</p>

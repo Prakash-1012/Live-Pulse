@@ -51,7 +51,7 @@ export default function HostDashboard() {
           <div className="flex items-center gap-3">
             <BackButton fallback="/" />
             <Activity className="w-8 h-8 text-purple-600" strokeWidth={2.5} />
-            <h1 className="text-2xl font-bold text-gray-900">LivePulse</h1>
+            <h1 className="text-2xl font-bold text-gray-900">BrainBuzz</h1>
           </div>
 
           <button

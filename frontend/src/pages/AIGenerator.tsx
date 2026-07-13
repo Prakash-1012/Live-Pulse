@@ -72,7 +72,7 @@ export default function AIGenerator() {
           <div className="flex items-center gap-3">
             <BackButton fallback={`/add-question/${sessionId ?? ""}`} />
             <Activity className="w-8 h-8 text-purple-600" strokeWidth={2.5} />
-            <h1 className="text-2xl font-bold text-gray-900">LivePulse</h1>
+            <h1 className="text-2xl font-bold text-gray-900">BrainBuzz</h1>
           </div>
 
           <div className="flex items-center gap-3">

@@ -37,7 +37,7 @@ export default function VotingScreen() {
 
   const saveAnswerLocally = (storedAnswer: StoredAnswer) => {
     if (!sessionId) return;
-    const key = `livepulse_answers_${sessionId}`;
+    const key = `brainbuzz_answers_${sessionId}`;
     const existing = JSON.parse(localStorage.getItem(key) || "[]") as StoredAnswer[];
     const updated = existing.filter((item) => item.questionId !== storedAnswer.questionId);
     updated.push(storedAnswer);
@@ -169,7 +169,7 @@ export default function VotingScreen() {
           <div className="flex items-center gap-3">
             <BackButton fallback="/join" />
             <Activity className="w-8 h-8 text-white" strokeWidth={2.5} />
-            <h1 className="text-2xl font-bold text-white">LivePulse</h1>
+            <h1 className="text-2xl font-bold text-white">BrainBuzz</h1>
           </div>
 
           <div className="flex items-center gap-3">

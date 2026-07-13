@@ -18,7 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 // app.get("/", (req, res) => {
-//   res.json({ message: "LivePulse API running" });
+//   res.json({ message: "BrainBuzz API running" });
 // });
 
 app.use("/api/auth", require("./routes/authRoutes"));

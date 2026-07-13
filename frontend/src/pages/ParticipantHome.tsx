@@ -42,7 +42,7 @@ export default function ParticipantHome() {
             <Activity className="w-10 h-10 text-purple-600" strokeWidth={2.5} />
           </div>
           <div>
-            <h1 className="text-5xl font-bold text-gray-900">LivePulse</h1>
+            <h1 className="text-5xl font-bold text-gray-900">BrainBuzz</h1>
             <p className="mt-4 text-gray-600 max-w-2xl mx-auto">
               Join live sessions, answer questions, and let the host track your score by name.
             </p>
@@ -70,7 +70,7 @@ export default function ParticipantHome() {
           </div>
         ) : (
           <div className="mb-8 rounded-3xl border border-gray-200 p-6">
-            <p className="text-lg text-gray-900 font-semibold">New to LivePulse?</p>
+            <p className="text-lg text-gray-900 font-semibold">New to BrainBuzz?</p>
             <p className="text-sm text-gray-600 mt-2">Sign up or log in as a participant to preserve your name and score.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
               <button

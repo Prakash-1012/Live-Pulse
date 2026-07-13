@@ -2,7 +2,7 @@
 // This ensures each browser/device joining a session gets a distinct ID
 
 export const getSessionJoinerId = (sessionCode: string): string => {
-  const storageKey = `livepulse_joiner_${sessionCode}`;
+  const storageKey = `brainbuzz_joiner_${sessionCode}`;
   
   let joinerId = localStorage.getItem(storageKey);
   
@@ -18,7 +18,7 @@ export const getSessionJoinerId = (sessionCode: string): string => {
 };
 
 export const getStoredJoinerName = (sessionCode: string): string | null => {
-  return localStorage.getItem(`livepulse_joiner_name_${sessionCode}`);
+  return localStorage.getItem(`brainbuzz_joiner_name_${sessionCode}`);
 };
 
 export const getJoinerDisplayName = (sessionCode: string): string => {

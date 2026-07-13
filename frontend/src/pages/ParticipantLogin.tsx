@@ -73,7 +73,7 @@ export default function ParticipantLogin() {
         <div className="bg-white rounded-3xl p-8 shadow-2xl">
           <div className="flex items-center gap-3 mb-2">
             <Activity className="w-8 h-8 text-purple-600" strokeWidth={2.5} />
-            <h1 className="text-3xl font-bold text-gray-900">LivePulse</h1>
+            <h1 className="text-3xl font-bold text-gray-900">BrainBuzz</h1>
           </div>
 
           <p className="text-gray-600 mb-8">Participant Login</p>
