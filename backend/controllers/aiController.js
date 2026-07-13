@@ -63,8 +63,37 @@ function parseNumFromPrompt(promptText) {
   if (m) return parseInt(m[1], 10);
   const m2 = promptText.match(/generate\s+(\d+)\b/i);
   if (m2) return parseInt(m2[1], 10);
+  // try matching written numbers (one, two, ten, twelve, twenty)
+  const wordMap = {
+    zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9,
+    ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16,
+    seventeen:17, eighteen:18, nineteen:19, twenty:20, thirty:30, forty:40, fifty:50,
+    sixty:60, seventy:70, eighty:80, ninety:90, hundred:100
+  };
+
+  const wordRegex = new RegExp(`\b(${Object.keys(wordMap).join("|")})\b(?:[\s-]*(?:${Object.keys(wordMap).join("|")}))?\s*(?:questions|question|qs|q)\b`, 'i');
+  const wm = promptText.match(wordRegex);
+  if (wm) {
+    let val = 0;
+    const parts = wm[0].toLowerCase().split(/[^a-z]+/).filter(Boolean);
+    for (const p of parts) {
+      if (wordMap[p] !== undefined) val += wordMap[p];
+    }
+    if (val > 0) return val;
+  }
+
+  // final attempt: look for any standalone small word-number like 'ten' near 'generate'
+  const genWord = promptText.match(/generate\s+(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\w+)/i);
+  if (genWord) {
+    const w = genWord[1].toLowerCase();
+    if (wordMap[w] !== undefined) return wordMap[w];
+    const num = parseInt(w,10);
+    if (!isNaN(num)) return num;
+  }
+
   return null;
 }
+
 
 async function sendPromptToGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
@@ -76,7 +105,8 @@ async function sendPromptToGemini(prompt) {
   const model = genAI.getGenerativeModel({ model: modelName });
   let text = null;
   let attempt = 0;
-  const maxAttempts = 3;
+  const maxAttempts = 6; // allow more retries for rate limits
+  let lastRetryAfterSec = null;
 
   while (attempt < maxAttempts) {
     attempt += 1;
@@ -94,8 +124,55 @@ async function sendPromptToGemini(prompt) {
 
       break;
     } catch (e) {
+      // If the provider says the model is not found (404), surface immediately with guidance
+      const status = e && (e.status || (e.response && e.response.status));
+      if (status === 404) {
+        const err = new Error(`Requested model is not available: ${modelName}. Update GEMINI_MODEL to a supported model or check your account access.`);
+        err.status = 404;
+        throw err;
+      }
+      // Detect 429 / Too Many Requests and respect Retry-After if present
+      const headers = e && e.response && e.response.headers;
+      const isRateLimit = status === 429 || (e && e.message && e.message.toLowerCase().includes("too many requests"));
+
+      if (isRateLimit) {
+        // honor Retry-After header when provided (seconds)
+        let retryAfterSec = null;
+        try {
+          if (headers) {
+            retryAfterSec = headers["retry-after"] || headers["Retry-After"] || null;
+            if (retryAfterSec) retryAfterSec = parseInt(retryAfterSec, 10);
+          }
+        } catch (_err) {
+          retryAfterSec = null;
+        }
+
+        const baseMs = 1000;
+        // exponential backoff with jitter
+        const backoffMs = retryAfterSec ? retryAfterSec * 1000 : baseMs * Math.pow(2, attempt - 1);
+        const jitter = Math.floor(Math.random() * 1000);
+        const waitMs = Math.min(backoffMs + jitter, 60 * 1000); // cap at 60s
+
+        console.warn(`sendPromptToGemini: rate-limited (429). attempt=${attempt}, retryAfterSec=${retryAfterSec}, waiting ${waitMs}ms`);
+
+        if (attempt >= maxAttempts) {
+          const err = new Error("Too Many Requests");
+          err.status = 429;
+          // attach the last observed retry-after (seconds) when available
+          err.retryAfterSec = lastRetryAfterSec || (Math.ceil(waitMs / 1000) || null);
+          throw err;
+        }
+
+        // record last retry-after seconds
+        lastRetryAfterSec = retryAfterSec || Math.ceil(waitMs / 1000);
+        await new Promise((res) => setTimeout(res, waitMs));
+        continue;
+      }
+
+      // For other transient errors, exponential backoff
       if (attempt >= maxAttempts) throw e;
-      await new Promise((res) => setTimeout(res, 1000 * Math.pow(2, attempt - 1)));
+      const wait = 1000 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 500);
+      await new Promise((res) => setTimeout(res, wait));
     }
   }
 
@@ -153,7 +230,15 @@ function handleAIErrors(res, error, fallbackMessage) {
   }
 
   if (error.status === 429 || (error.message && error.message.includes("Too Many Requests"))) {
-    return res.status(429).json({ message: "AI service quota exceeded" });
+    // If the underlying error provided a retryAfterSec, include it in the response headers
+    if (error.retryAfterSec) {
+      try { res.setHeader("Retry-After", String(error.retryAfterSec)); } catch (_) {}
+    }
+    return res.status(429).json({ message: "AI service quota exceeded", retryAfterSec: error.retryAfterSec || null });
+  }
+
+  if (error.status === 404 || (error.message && error.message.toLowerCase().includes("not available") && error.message.toLowerCase().includes("model"))) {
+    return res.status(400).json({ message: "Requested model not available. Update GEMINI_MODEL or check account/model access.", details: error.message });
   }
 
   if (error.status === 503 || (error.message && error.message.includes("Service Unavailable"))) {
@@ -201,6 +286,8 @@ exports.uploadQuiz = async (req, res) => {
     const userPrompt = (req.body && (req.body.prompt || "")) || "";
     const parsedNum = parseNumFromPrompt(userPrompt);
     const numQuestions = parsedNum && Number.isFinite(parsedNum) ? parsedNum : 8;
+    console.debug('uploadQuiz: received userPrompt=', userPrompt ? userPrompt.slice(0,200) : '(none)');
+    console.debug('uploadQuiz: parsedNum=', parsedNum, 'using numQuestions=', numQuestions);
 
     // Some models may effectively cap sensible outputs per call (observed ~8).
     // If user requests more than CHUNK_SIZE, generate in batches and combine.
@@ -217,7 +304,9 @@ exports.uploadQuiz = async (req, res) => {
       // Provide previously generated questions to avoid duplicates.
       const previousQuestionsText = combined.map((q) => q.question).join("\n");
 
+      // Build a stronger chunk prompt that enforces NEW questions and exact counts when possible
       let chunkPrompt = buildPromptFromPptText(slideText, userPrompt, chunkSize);
+      chunkPrompt += `\n\nInstruction: Generate ${chunkSize} NEW questions that are not present in the previously generated list. Return exactly ${chunkSize} items if possible. If fewer unique items are possible, return as many unique questions as you can. Return only valid JSON (array of question objects).`;
       if (combined.length > 0) {
         chunkPrompt += `\n\nPreviously generated questions (do not repeat):\n${previousQuestionsText}`;
       }
@@ -233,17 +322,20 @@ exports.uploadQuiz = async (req, res) => {
         break;
       }
 
-      // Append unique questions only
+      // Append unique questions only and log progress
+      const before = combined.length;
       for (const q of chunkQuiz) {
         if (combined.length >= numQuestions) break;
         const already = combined.find((ex) => ex.question.trim() === q.question.trim());
         if (!already) combined.push(q);
       }
+      const added = combined.length - before;
+      console.debug(`uploadQuiz: chunk returned ${chunkQuiz.length} items, added ${added} unique`);
 
       remaining = numQuestions - combined.length;
 
       // Safety: if the chunk didn't add new items, stop to avoid infinite loop
-      if (chunkQuiz.length === 0 || combined.length > 0 && chunkQuiz.every((q) => combined.find((ex) => ex.question.trim() === q.question.trim()))) {
+      if (added === 0) {
         console.warn("uploadQuiz: chunk produced no new unique questions — stopping");
         break;
       }

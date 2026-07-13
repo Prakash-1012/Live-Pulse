@@ -56,7 +56,17 @@ export default function AIGenerator() {
         }))
       );
     } catch (err: any) {
-      setError(err?.message || "Unable to generate quiz. Try another topic.");
+      // Handle rate-limit responses from the server
+      if (err?.response && err.response.status === 429) {
+        const retrySec = err.response.data?.retryAfterSec || err.response.headers?.["retry-after"];
+        setError(
+          retrySec
+            ? `Service is rate-limited. Please try again in ${retrySec} seconds.`
+            : "Service is rate-limited. Please wait a moment and try again."
+        );
+      } else {
+        setError(err?.message || "Unable to generate quiz. Try another topic.");
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -93,7 +103,16 @@ export default function AIGenerator() {
         }))
       );
     } catch (err: any) {
-      setError(err?.message || "Unable to generate quiz from PPT. Try again.");
+      if (err?.response && err.response.status === 429) {
+        const retrySec = err.response.data?.retryAfterSec || err.response.headers?.["retry-after"];
+        setError(
+          retrySec
+            ? `Service is rate-limited. Please try again in ${retrySec} seconds.`
+            : "Service is rate-limited. Please wait a moment and try again."
+        );
+      } else {
+        setError(err?.message || "Unable to generate quiz from PPT. Try again.");
+      }
     } finally {
       setUploading(false);
     }
